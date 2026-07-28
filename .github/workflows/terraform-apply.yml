@@ -1,0 +1,106 @@
+# name: Terraform Apply
+
+# on:
+#   push:
+#     branches:
+#       - dev
+#       - homolog
+#       - prod
+#   workflow_dispatch:
+
+# permissions:
+#   contents: read
+#   id-token: write
+
+# env:
+#   TF_CLI_ARGS_init: >-
+#     -reconfigure
+#     -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}"
+#     -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
+#     -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}"
+#     -backend-config="key=omnitable-${{ github.ref_name }}.tfstate"
+
+# concurrency:
+#   group: terraform-${{ github.ref_name }}
+#   cancel-in-progress: false
+
+# jobs:
+#   plan:
+#     name: Plan (${{ github.ref_name }})
+#     if: >-
+#       github.ref_type == 'branch' &&
+#       contains(fromJSON('["dev", "homolog", "prod"]'), github.ref_name)
+#     runs-on: ubuntu-latest
+
+#     env:
+#       TF_IN_AUTOMATION: "true"
+#       TF_INPUT: "false"
+#       ARM_USE_OIDC: "true"
+#       ARM_CLIENT_ID: ${{ secrets.AZURE_PLAN_CLIENT_ID }}
+#       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+#       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: 1.15.5
+#           terraform_wrapper: false
+
+#       - name: Terraform fmt
+#         run: terraform fmt -check -recursive
+
+#       - name: Terraform init
+#         run: terraform init
+
+#       - name: Terraform validate
+#         run: terraform validate
+
+#       - name: Terraform plan
+#         run: terraform plan -var="environment=${GITHUB_REF_NAME}" -out=tfplan
+
+#       - name: Upload Terraform plan
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: tfplan-${{ github.sha }}
+#           path: tfplan
+#           if-no-files-found: error
+#           retention-days: 1
+
+#   apply:
+#     name: Apply (${{ github.ref_name }})
+#     needs: plan
+#     runs-on: ubuntu-latest
+#     environment: ${{ github.ref_name }}
+
+#     env:
+#       TF_IN_AUTOMATION: "true"
+#       TF_INPUT: "false"
+#       ARM_USE_OIDC: "true"
+#       ARM_CLIENT_ID: ${{ secrets.AZURE_APPLY_CLIENT_ID }}
+#       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+#       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: 1.15.5
+#           terraform_wrapper: false
+
+#       - name: Terraform init
+#         run: terraform init
+
+#       - name: Download Terraform plan
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: tfplan-${{ github.sha }}
+
+#       - name: Terraform apply
+#         run: terraform apply tfplan
