@@ -4,3 +4,5 @@
 *.tfstate.*
 
 *.tfplan
+
+crash.log
