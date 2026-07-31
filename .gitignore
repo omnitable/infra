@@ -6,3 +6,6 @@
 *.tfplan
 
 crash.log
+
+bootstrap/backend.hcl
+bootstrap/bootstrap.tfvars
